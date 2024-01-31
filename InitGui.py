@@ -711,7 +711,7 @@ def pieMenuStart():
                     self.double_spinbox.setSingleStep(step)
                 except:
                     None
-            return super(PieMenu, self).eventFilter(obj, event)
+            return False
 
 
         def add_commands(self, commands, context=False, keyValue=None):
@@ -762,6 +762,7 @@ def pieMenuStart():
             # "Pie", "RainbowUp", "RainbowDown", "UpDown", "TableTop", "TableDown", "LeftRight"
             shape = getShape(keyValue)
             num_per_row = getNumColumn(keyValue)
+            icon_spacing = getIconSpacing(keyValue)
 
             if paramGet.GetBool("ToolBar"):
                 valueRadius = 100
@@ -779,6 +780,9 @@ def pieMenuStart():
 
             if num_per_row == 0:
                 num_per_row = 1
+            
+            if icon_spacing < 0:
+                icon_spacing = 0            
 
             if shape == "Pie":
                 if commandNumber == 1:
@@ -880,37 +884,38 @@ def pieMenuStart():
                     if shape == "TableTop":
                         ### Table  Top ###
                         num_of_line = math.ceil(commandNumber/num_per_row)
-                        offset = num_of_line * buttonSize
-                        X = ((num-1) % num_per_row) * buttonSize
-                        Y =  self.radius  + ((num-1) // num_per_row) * buttonSize
-                        button.setProperty("ButtonX", X - ((num_per_row-1) * buttonSize) / 2)
+                        offset = num_of_line * (buttonSize + icon_spacing)
+                        X = ((num-1) % num_per_row) * (buttonSize + icon_spacing)
+                        Y = self.radius / 2 + ((num-1) // num_per_row) * (buttonSize + icon_spacing)
+                        button.setProperty("ButtonX", X - ((num_per_row-1) * (buttonSize + icon_spacing)) / 2)
                         button.setProperty("ButtonY", -Y )
 
                     elif shape == "TableDown":
                         ### Table Down  ###
                         num_of_line = math.ceil(commandNumber/num_per_row)
-                        X = ((num-1) % num_per_row) * buttonSize
-                        Y = - buttonSize -self.radius -((num-1) // num_per_row) * buttonSize
-                        button.setProperty("ButtonX", X - ((num_per_row-1) * buttonSize) / 2)
+                        X = ((num-1) % num_per_row) * (buttonSize + icon_spacing)
+                        Y = - buttonSize - self.radius / 4 - ((num-1) // num_per_row) * (buttonSize + icon_spacing)
+                        button.setProperty("ButtonX", X - ((num_per_row-1) * (buttonSize + icon_spacing)) / 2)
                         button.setProperty("ButtonY", -Y )
 
                     elif shape == "UpDown":
                         ### Table Up and Down  ###
-                        num_per_row = math.ceil(commandNumber/2)
-                        X = ((num -1) % num_per_row) * buttonSize
-                        if ((num-1) < (num_per_row)) :
+                        num_per_row = math.ceil(commandNumber / 2)
+                        X = ((num - 1) % num_per_row) * (buttonSize + icon_spacing)
+                        if ((num - 1) < num_per_row):
                             offset = 0
-                        else :
-                            offset = 2*self.radius
-                        Y = (self.radius - offset )
+                        else:
+                            offset = 2 * self.radius
+                        Y = (self.radius - offset)
 
-                        button.setProperty("ButtonX", X - ((num_per_row - 1) * buttonSize) / 2)
+                        button.setProperty("ButtonX", X - ((num_per_row - 1) * (buttonSize + icon_spacing)) / 2)
                         button.setProperty("ButtonY", -Y)
 
+
                     elif shape == "LeftRight":
-                        ### Table Up and Down  ###
+                        ### Table Left and Right  ###
                         num_per_row = math.ceil(commandNumber/2)
-                        Y = ((num -1) % num_per_row) * buttonSize
+                        Y = ((num -1) % num_per_row) * (buttonSize + icon_spacing)
                         if ((num-1) < (num_per_row)) :
                             offset = 0
                         else :
@@ -918,13 +923,14 @@ def pieMenuStart():
                         X = (self.radius - offset )
 
                         button.setProperty("ButtonX", -X)
-                        button.setProperty("ButtonY", Y - ((num_per_row - 1) * buttonSize) / 2)
+                        button.setProperty("ButtonY", Y - ((num_per_row - 1) * (buttonSize + icon_spacing)) / 2)
                     else :
                         ### Pie / RainbowUp / RainbowDown  ###
                         button.setProperty("ButtonX", self.radius *
                                            (math.cos(angle * num + angleStart)))
                         button.setProperty("ButtonY", self.radius *
                                            (math.sin(angle * num + angleStart)))
+
 
                     self.buttons.append(button)
                 else:
@@ -1110,7 +1116,7 @@ def pieMenuStart():
             g = Gui.ActiveDocument.getInEdit()
             fonctionActive = g.Object
             featureName = g.Object.Name
-            self.double_spinbox.installEventFilter(self)
+            # self.double_spinbox.installEventFilter(self)
             size = self.double_spinbox.value()
             if (str(fonctionActive) == '<PartDesign::Fillet>'):
                 App.getDocument(docName).getObject(featureName).Radius = size
@@ -1128,7 +1134,7 @@ def pieMenuStart():
                 self.double_spinbox.setVisible(False)
             else:
                 self.double_spinbox.setVisible(False)
-            self.double_spinbox.removeEventFilter(self)
+            # self.double_spinbox.removeEventFilter(self)
             App.ActiveDocument.recompute()
 
     sign = {
@@ -1743,6 +1749,7 @@ def pieMenuStart():
         shape = getShape(cBox.currentText())
         onShape(shape)
         spinNumColumn.setValue(getNumColumn(cBox.currentText()))
+        spinIconSpacing.setValue(getIconSpacing(cBox.currentText()))
         setDefaultMenuBarWb()
 
 
@@ -2031,7 +2038,7 @@ def pieMenuStart():
         cBoxUpdate()
     buttonCopyPieMenu.clicked.connect(onButtonCopyPieMenu)
     
-    labelDefaultMenuBarWb = QtGui.QLabel(translate("PieMenuTab", "Set default Workbench:"))
+    labelDefaultMenuBarWb = QtGui.QLabel(translate("PieMenuTab", "Default PieMenu Associated Workshop:"))
     labelDefaultMenuBarWb.setAlignment(QtCore.Qt.AlignRight)
  
     def getListWorkbenches():
@@ -2138,6 +2145,7 @@ def pieMenuStart():
     labeldisplayCommandName.setAlignment(QtCore.Qt.AlignRight)
 
     spinNumColumn = QtGui.QSpinBox()
+    spinIconSpacing = QtGui.QSpinBox()
 
     def setShape():
         group = getGroup(mode=0)
@@ -2149,7 +2157,7 @@ def pieMenuStart():
 
 
     def onShape(shape):
-        if shape in ["TableTop", "TableDown"]:
+        if shape in ["TableTop", "TableDown", "TableLeft", "TableRight"]:
             spinNumColumn.setEnabled(True)
             labelNumColumn.setVisible(True)
             spinNumColumn.setVisible(True)
@@ -2157,6 +2165,19 @@ def pieMenuStart():
             spinNumColumn.setEnabled(False)
             labelNumColumn.setVisible(False)
             spinNumColumn.setVisible(False)
+        if shape in ["UpDown", "LeftRight", "TableTop", "TableDown", "TableLeft", "TableRight"]:
+            labelIconSpacing.setVisible(True)
+            spinIconSpacing.setEnabled(True)
+            spinIconSpacing.setVisible(True)
+        else:
+            labelIconSpacing.setVisible(False)
+            spinIconSpacing.setEnabled(False)
+            spinIconSpacing.setVisible(False)
+            
+        if shape in ["TableTop", "TableDown"]:
+            labelNumColumn.setText("Number of columns:")
+        else:
+            labelNumColumn.setText("Number of rows:")
 
         if shape == "Pie":
             labeldisplayCommandName.setVisible(True)
@@ -2189,9 +2210,22 @@ def pieMenuStart():
 
         comboShape.blockSignals(True)
         comboShape.clear()
-        available_shape = [ "Pie", "RainbowUp", "RainbowDown", "UpDown", "TableTop",\
-                           "TableDown", "LeftRight" ]
-        comboShape.addItems(available_shape)
+        comboShape.addItem("Pie")
+        comboShape.addItem(" ") # Add separator
+        comboShape.model().item(comboShape.count()-1).setEnabled(False)  # Disable the separator item
+        comboShape.addItem("RainbowUp")
+        comboShape.addItem("RainbowDown")
+        comboShape.addItem(" ") # Add separator
+        comboShape.model().item(comboShape.count()-1).setEnabled(False)  # Disable the separator item   
+        comboShape.addItem("UpDown")
+        comboShape.addItem("LeftRight")
+        comboShape.addItem(" ") # Add separator
+        comboShape.model().item(comboShape.count()-1).setEnabled(False)  # Disable the separator item
+        comboShape.addItem("TableTop")
+        comboShape.addItem("TableDown")
+        comboShape.addItem("TableLeft")
+        comboShape.addItem("TableRight")
+
         index = comboShape.findText(shape)
         if index != -1:
             comboShape.setCurrentIndex(index)
@@ -2236,6 +2270,11 @@ def pieMenuStart():
     spinNumColumn.setMaximum(12)
     spinNumColumn.setMinimumWidth(120)
 
+    labelIconSpacing= QtGui.QLabel("Icon spacing:")
+    labelIconSpacing.setAlignment(QtCore.Qt.AlignRight)
+    spinIconSpacing.setMaximum(200)
+    spinIconSpacing.setMinimumWidth(0)
+
     cboxDisplayCommandName = QCheckBox()
     cboxDisplayCommandName.setCheckable(True)
 
@@ -2268,6 +2307,32 @@ def pieMenuStart():
                 num_of_column = param.GetInt("NumColumn")
         return num_of_column
 
+    def onIconSpacing():
+        group = getGroup()
+        value = spinIconSpacing.value()
+        group.SetInt("IconSpacing", value)
+
+    spinIconSpacing.valueChanged.connect(onIconSpacing)
+
+    def getIconSpacing(keyValue=None):
+        group = getGroup()
+        icon_spacing = 10 # Default value in pixels
+        if keyValue == None:
+            try:
+                keyValue = paramGet.GetString("CurrentPie").decode("UTF-8")
+            except AttributeError:
+                keyValue = paramGet.GetString("CurrentPie")
+
+        indexList = getIndexList()
+        for i in indexList:
+            try:
+                pieName = paramIndexGet.GetString(str(i)).decode("UTF-8")
+            except AttributeError:
+                pieName = paramIndexGet.GetString(str(i))
+            if pieName == keyValue:
+                param = paramIndexGet.GetGroup(str(i))
+                icon_spacing = param.GetInt("IconSpacing")
+        return icon_spacing
 
     def onSpinHoverDelay():
         value = spinHoverDelay.value()
@@ -2923,7 +2988,7 @@ def pieMenuStart():
             group.SetInt("Radius", 80)
             group.SetInt("Button", 32)
             group.SetString("Shape", "Pie")
-            group.SetString("DefaultWorkbench", "Sketcher")
+
         paramGet.SetBool("ToolBar", False)
         paramGet.RemString("ToolBar")
         paramGet.SetString("CurrentPie", "View")
@@ -3053,6 +3118,16 @@ def pieMenuStart():
         layoutColumn = QtGui.QHBoxLayout()
         layoutColumn.addLayout(layoutColumnLeft, 1)
         layoutColumn.addLayout(layoutColumnRight, 1)
+
+        layoutIconSpacingLeft = QtGui.QHBoxLayout()
+        layoutIconSpacingLeft.addStretch(1)
+        layoutIconSpacingLeft.addWidget(labelIconSpacing)
+        layoutIconSpacingRight = QtGui.QHBoxLayout()
+        layoutIconSpacingRight.addWidget(spinIconSpacing)
+        layoutIconSpacingRight.addStretch(1)
+        layoutIconSpacing = QtGui.QHBoxLayout()
+        layoutIconSpacing.addLayout(layoutIconSpacingLeft, 1)
+        layoutIconSpacing.addLayout(layoutIconSpacingRight, 1)
 
         layoutDisplayCommandNameLeft = QtGui.QHBoxLayout()
         layoutDisplayCommandNameLeft.addStretch(1)
@@ -3190,10 +3265,11 @@ def pieMenuStart():
         pieMenuTabLayout.insertLayout(4, layoutButton)
         pieMenuTabLayout.insertLayout(5, layoutShape)
         pieMenuTabLayout.insertLayout(6, layoutColumn)
-        pieMenuTabLayout.insertLayout(7, layoutDisplayCommandName)
-        pieMenuTabLayout.insertSpacing(8, 42)
-        pieMenuTabLayout.insertWidget(9, separatorPieMenu)
-        pieMenuTabLayout.insertLayout(10, layoutShortcut)
+        pieMenuTabLayout.insertLayout(7, layoutIconSpacing)
+        pieMenuTabLayout.insertLayout(8, layoutDisplayCommandName)
+        pieMenuTabLayout.insertSpacing(9, 42)
+        pieMenuTabLayout.insertWidget(10, separatorPieMenu)
+        pieMenuTabLayout.insertLayout(11, layoutShortcut)
 
         pieMenuTabLayout.addStretch(0)
 
