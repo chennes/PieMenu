@@ -1,6 +1,6 @@
 # PieMenu widget for FreeCAD
 
-# Copyright (C) 2024 Grubuntu, Pgilfernandez @ FreeCAD
+# Copyright (C) 2024 Grubuntu, Pgilfernandez, hasecilu @ FreeCAD
 # Copyright (C) 2022, 2023 mdkus @ FreeCAD
 # Copyright (C) 2016, 2017 triplus @ FreeCAD
 # Copyright (C) 2015,2016 looo @ FreeCAD
@@ -25,6 +25,8 @@
 # http://forum.freecadweb.org/
 # http://www.freecadweb.org/wiki/index.php?title=Code_snippets
 
+# Dev :
+# Add a checkbox for Pocket : "Through all"
 
 global PIE_MENU_VERSION
 PIE_MENU_VERSION = "1.3.Dev"
@@ -606,6 +608,7 @@ def pieMenuStart():
         def __init__(self, parent=mw):
             super().__init__()
             self.double_spinbox = None
+            self.checkbox_pocket = self.checkboxPocket()
 
             if not PieMenu.event_filter_installed:
                 app = QtGui.QGuiApplication.instance() or QtGui.QApplication([])
@@ -678,14 +681,16 @@ def pieMenuStart():
             button.setStyleSheet(" QWidget { border-radius: 5px; }")
             button.setSingleStep(step)
             return button
-
-        def setupSpinBox(self):
-            self.double_spinbox = self.doubleSpinbox(step=1.0)
-            self.double_spinbox.valueChanged.connect(self.spin_interactif)
-
-            self.double_spinbox.setVisible(True)
-            self.buttons.append(self.double_spinbox)
-
+            
+            
+        def checkboxPocket(self):
+            checkboxPocket = QCheckBox(translate("Fast Spinbox", "Through all"))
+            checkboxPocket.setCheckable(True)
+            checkboxPocket.setProperty("ButtonX", -5)
+            checkboxPocket.setProperty("ButtonY", -60)
+            checkboxPocket.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+            # checkboxPocket.setStyleSheet(" QWidget { border-radius: 5px; }")
+            return checkboxPocket
 
         def eventFilter(self, obj, event):
             """ Handle key and wheel event """
@@ -712,7 +717,6 @@ def pieMenuStart():
                 except:
                     None
             return False
-
 
         def add_commands(self, commands, context=False, keyValue=None):
             """ Add commands to mieMenus """
@@ -780,9 +784,8 @@ def pieMenuStart():
 
             if num_per_row == 0:
                 num_per_row = 1
-            
             if icon_spacing < 0:
-                icon_spacing = 0            
+                icon_spacing = 0
 
             if shape == "Pie":
                 if commandNumber == 1:
@@ -898,6 +901,22 @@ def pieMenuStart():
                         button.setProperty("ButtonX", X - ((num_per_row-1) * (buttonSize + icon_spacing)) / 2)
                         button.setProperty("ButtonY", -Y )
 
+                    elif shape == "TableLeft":
+                        ### Table Left  ###
+                        num_of_line = math.ceil(commandNumber/num_per_row)
+                        X = - buttonSize - self.radius -((num-1) // num_per_row) * (buttonSize + icon_spacing)
+                        Y = ((num-1) % num_per_row) * (buttonSize + icon_spacing)
+                        button.setProperty("ButtonX", X )
+                        button.setProperty("ButtonY", Y - ((num_per_row-1) * (buttonSize + icon_spacing)) / 2)
+
+                    elif shape == "TableRight":
+                        ### Table Right  ###
+                        num_of_line = math.ceil(commandNumber/num_per_row)
+                        X = buttonSize + self.radius + ((num-1) // num_per_row) * (buttonSize + icon_spacing)
+                        Y = ((num-1) % num_per_row) * (buttonSize + icon_spacing)
+                        button.setProperty("ButtonX", X )
+                        button.setProperty("ButtonY", Y - ((num_per_row-1) * (buttonSize + icon_spacing)) / 2)
+
                     elif shape == "UpDown":
                         ### Table Up and Down  ###
                         num_per_row = math.ceil(commandNumber / 2)
@@ -931,16 +950,15 @@ def pieMenuStart():
                         button.setProperty("ButtonY", self.radius *
                                            (math.sin(angle * num + angleStart)))
 
-
                     self.buttons.append(button)
                 else:
                     None
                 num = num + 1
 
             buttonQuickMenu = quickMenu()
-            buttonQuickMenu.setParent(self.menu)
             if checkboxQuickMenu.checkState():
                 if (module != 'SketcherGui'): # TO SOLVE : we hide setting menu in sketcher to prevent user to go in the preferences dialog : there is a bug with settings
+                    buttonQuickMenu.setParent(self.menu)
                     self.buttons.append(buttonQuickMenu)
             else:
                 buttonQuickMenu.hide()
@@ -960,7 +978,6 @@ def pieMenuStart():
             # buttonCancel.setParent(self.menu)
             # buttonCancel.clicked.connect(self.cancel)
             # self.buttons.append(buttonCancel)
-
             try:
                 if (Gui.ActiveDocument.getInEdit() != None):
                     """ or show Valid and Cancel buttons in Edit Feature Only """
@@ -982,14 +999,12 @@ def pieMenuStart():
                         """ Show Spinbox in Edit Feature in Part Design WB only """
                         fonctionActive = g.Object
                         featureName = g.Object.Name
-
                         double_spinbox = self.doubleSpinbox()
                         double_spinbox.setParent(self.menu)
                         double_spinbox.valueChanged.connect(self.spin_interactif)
                         self.buttons.append(double_spinbox)
                         double_spinbox.setVisible(True)
                         self.double_spinbox = double_spinbox
-
                         if (str(fonctionActive) == '<PartDesign::Fillet>'):
                             self.double_spinbox.setValue(g.Object.Radius)
                         elif (str(fonctionActive) == '<PartDesign::Chamfer>'):
@@ -997,16 +1012,34 @@ def pieMenuStart():
                         elif (str(fonctionActive) == '<PartDesign::Pad>'):
                             self.double_spinbox.setValue(g.Object.Length)
                         elif (str(fonctionActive) == '<PartDesign::Pocket>'):
-                            self.double_spinbox.setValue(g.Object.Length)
+                            checkbox_pocket = self.checkboxPocket()
+                            checkbox_pocket.setParent(self.menu)
+                            self.buttons.append(checkbox_pocket)
+                            checkbox_pocket.setVisible(False)
+                            checkbox_pocket.stateChanged.connect(self.spin_interactif)
+                        
+                            checkbox_pocket.setVisible(True)
+                            if g.Object.Type == "ThroughAll":
+                                checkbox_pocket.setChecked(True)
+                                self.double_spinbox.setEnabled(False)
+                            else:
+                                checkbox_pocket.setChecked(False)
+                                self.double_spinbox.setEnabled(True)
+                                self.double_spinbox.setValue(g.Object.Length)
                         elif (str(fonctionActive) == '<PartDesign::Thickness>'):
                             self.double_spinbox.setValue(g.Object.Value)
                         elif (str(fonctionActive) == '<PartDesign::Revolution>'):
                             self.double_spinbox.setValue(g.Object.Angle)
+                            self.double_spinbox.setSuffix(" °")
+                        elif (str(fonctionActive) == '<PartDesign::Groove>'):
+                            self.double_spinbox.setValue(g.Object.Angle)
+                            self.double_spinbox.setSuffix(" °")
                         elif (str(fonctionActive) == '<PartDesign::Hole>'): # TODO :  à developper pour gérer la fonction Hole
                             self.buttons.remove(double_spinbox)
                         else:
                             self.buttons.remove(double_spinbox)
-
+                        checkbox_pocket.setVisible(False)
+                        self.checkbox_pocket = checkbox_pocket
                         self.double_spinbox.setFocus()
                         self.double_spinbox.selectAll()
                         self.offset_x = 10
@@ -1118,6 +1151,11 @@ def pieMenuStart():
             featureName = g.Object.Name
             # self.double_spinbox.installEventFilter(self)
             size = self.double_spinbox.value()
+            try:
+                pocketType = self.checkbox_pocket.isChecked()
+            except:
+                pocketType = 0
+                None
             if (str(fonctionActive) == '<PartDesign::Fillet>'):
                 App.getDocument(docName).getObject(featureName).Radius = size
             elif (str(fonctionActive) == '<PartDesign::Chamfer>'):
@@ -1125,10 +1163,19 @@ def pieMenuStart():
             elif (str(fonctionActive) == '<PartDesign::Pad>'):
                 App.getDocument(docName).getObject(featureName).Length = size
             elif (str(fonctionActive) == '<PartDesign::Pocket>'):
-                App.getDocument(docName).getObject(featureName).Length = size
+                if pocketType:
+                    self.double_spinbox.setEnabled(False)
+                    App.getDocument(docName).getObject(featureName).Type = 1
+                else :
+                    self.double_spinbox.setEnabled(True)
+                    App.getDocument(docName).getObject(featureName).Type = 0
+                    App.getDocument(docName).getObject(featureName).Length = size
+                
             elif (str(fonctionActive) == '<PartDesign::Thickness>'):
                 App.getDocument(docName).getObject(featureName).Value = size
             elif (str(fonctionActive) == '<PartDesign::Revolution>'):
+                App.getDocument(docName).getObject(featureName).Angle = size
+            elif (str(fonctionActive) == '<PartDesign::Groove>'):
                 App.getDocument(docName).getObject(featureName).Angle = size
             elif (str(fonctionActive) == '<PartDesign::Hole>'):
                 self.double_spinbox.setVisible(False)
@@ -1750,7 +1797,7 @@ def pieMenuStart():
         onShape(shape)
         spinNumColumn.setValue(getNumColumn(cBox.currentText()))
         spinIconSpacing.setValue(getIconSpacing(cBox.currentText()))
-        setDefaultMenuBarWb()
+        setWbForPieMenu()
 
 
     cBox.currentIndexChanged.connect(onPieChange)
@@ -2038,8 +2085,8 @@ def pieMenuStart():
         cBoxUpdate()
     buttonCopyPieMenu.clicked.connect(onButtonCopyPieMenu)
     
-    labelDefaultMenuBarWb = QtGui.QLabel(translate("PieMenuTab", "Default PieMenu Associated Workshop:"))
-    labelDefaultMenuBarWb.setAlignment(QtCore.Qt.AlignRight)
+    labelWbForPieMenu = QtGui.QLabel(translate("PieMenuTab", "Default PieMenu associated workbench:"))
+    labelWbForPieMenu.setAlignment(QtCore.Qt.AlignRight)
  
     def getListWorkbenches():
         workenchList = Gui.listWorkbenches()
@@ -2071,10 +2118,11 @@ def pieMenuStart():
 
         return wbAlreadySet
  
-    def setDefaultMenuBarWb():
+ 
+    def setWbForPieMenu():
         group = getGroup()
         
-        comboDefaultMenuBarWb.blockSignals(True)
+        comboWbForPieMenu.blockSignals(True)
         wbList = getListWorkbenches()
         wbAlreadySet = getWbAlreadySet()
 
@@ -2083,27 +2131,27 @@ def pieMenuStart():
                 wbList.remove(item)
                 wbAlreadySet.remove(item)
 
-        defWorkbench = getDefaultMenuBarWb()
+        defWorkbench = getWbForPieMenu()
         wbList.append(defWorkbench)
         if 'None' not in wbList:
             wbList.insert(0, 'None')
 
-        comboDefaultMenuBarWb.clear()
-        comboDefaultMenuBarWb.addItems(wbList)
-        index = comboDefaultMenuBarWb.findText(defWorkbench)
+        comboWbForPieMenu.clear()
+        comboWbForPieMenu.addItems(wbList)
+        index = comboWbForPieMenu.findText(defWorkbench)
         if index != -1:
-            comboDefaultMenuBarWb.setCurrentIndex(index)
-        comboDefaultMenuBarWb.blockSignals(False)
+            comboWbForPieMenu.setCurrentIndex(index)
+        comboWbForPieMenu.blockSignals(False)
 
  
-    def getDefaultMenuBarWb():
+    def getWbForPieMenu():
         group = getGroup(mode=0)
         defWorkbench = group.GetString("DefaultWorkbench")
         return defWorkbench
     
-    def onDefaultMenuBarWb():
+    def onWbForPieMenu():
         group = getGroup()
-        defWorkbench = comboDefaultMenuBarWb.currentText()
+        defWorkbench = comboWbForPieMenu.currentText()
         group.SetString("DefaultWorkbench", defWorkbench)
         
     def getPieName(wbName):
@@ -2121,10 +2169,10 @@ def pieMenuStart():
                 text = pie
         return text
 
-    comboDefaultMenuBarWb = QComboBox()
-    comboDefaultMenuBarWb.setMinimumWidth(160)
+    comboWbForPieMenu = QComboBox()
+    comboWbForPieMenu.setMinimumWidth(160)
     
-    comboDefaultMenuBarWb.currentIndexChanged.connect(onDefaultMenuBarWb)
+    comboWbForPieMenu.currentIndexChanged.connect(onWbForPieMenu)
     labelRadius = QtGui.QLabel(translate("PieMenuTab", "Pie size:"))
     labelRadius.setAlignment(QtCore.Qt.AlignRight)
     spinRadius = QtGui.QSpinBox()
@@ -2210,22 +2258,9 @@ def pieMenuStart():
 
         comboShape.blockSignals(True)
         comboShape.clear()
-        comboShape.addItem("Pie")
-        comboShape.addItem(" ") # Add separator
-        comboShape.model().item(comboShape.count()-1).setEnabled(False)  # Disable the separator item
-        comboShape.addItem("RainbowUp")
-        comboShape.addItem("RainbowDown")
-        comboShape.addItem(" ") # Add separator
-        comboShape.model().item(comboShape.count()-1).setEnabled(False)  # Disable the separator item   
-        comboShape.addItem("UpDown")
-        comboShape.addItem("LeftRight")
-        comboShape.addItem(" ") # Add separator
-        comboShape.model().item(comboShape.count()-1).setEnabled(False)  # Disable the separator item
-        comboShape.addItem("TableTop")
-        comboShape.addItem("TableDown")
-        comboShape.addItem("TableLeft")
-        comboShape.addItem("TableRight")
-
+        available_shape = [ "Pie", "RainbowUp", "RainbowDown", "UpDown", "LeftRight", \
+                           "TableTop", "TableDown", "TableLeft", "TableRight" ]
+        comboShape.addItems(available_shape)
         index = comboShape.findText(shape)
         if index != -1:
             comboShape.setCurrentIndex(index)
@@ -3033,17 +3068,17 @@ def pieMenuStart():
         layoutAddRemove.addWidget(buttonRemovePieMenu)
         layoutAddRemove.addWidget(buttonRenamePieMenu)
         layoutAddRemove.addWidget(buttonCopyPieMenu)
+
+        layoutWbForPieMenuLeft = QtGui.QHBoxLayout()
+        layoutWbForPieMenuLeft.addStretch(1)
+        layoutWbForPieMenuLeft.addWidget(labelWbForPieMenu)
+        layoutWbForPieMenuRight = QtGui.QHBoxLayout()
+        layoutWbForPieMenuRight.addWidget(comboWbForPieMenu)
+        layoutWbForPieMenuRight.addStretch(1)
+        layoutWbForPieMenu = QtGui.QHBoxLayout()
+        layoutWbForPieMenu.addLayout(layoutWbForPieMenuLeft, 1)
+        layoutWbForPieMenu.addLayout(layoutWbForPieMenuRight, 1)
         
-        
-        layoutMenuBarWbLeft = QtGui.QHBoxLayout()
-        layoutMenuBarWbLeft.addStretch(1)
-        layoutMenuBarWbLeft.addWidget(labelDefaultMenuBarWb)
-        layoutMenuBarWbRight = QtGui.QHBoxLayout()
-        layoutMenuBarWbRight.addWidget(comboDefaultMenuBarWb)
-        layoutMenuBarWbRight.addStretch(1)
-        layoutMenuBarWb = QtGui.QHBoxLayout()
-        layoutMenuBarWb.addLayout(layoutMenuBarWbLeft, 1)
-        layoutMenuBarWb.addLayout(layoutMenuBarWbRight, 1)
         layoutRadiusLeft = QtGui.QHBoxLayout()
         layoutRadiusLeft.addStretch(1)
         layoutRadiusLeft.addWidget(labelRadius)
@@ -3260,7 +3295,7 @@ def pieMenuStart():
 
         pieMenuTabLayout.insertLayout(0, layoutAddRemove)
         pieMenuTabLayout.insertSpacing(1, 12)
-        pieMenuTabLayout.insertLayout(2, layoutMenuBarWb)
+        pieMenuTabLayout.insertLayout(2, layoutWbForPieMenu)
         pieMenuTabLayout.insertLayout(3, layoutRadius)
         pieMenuTabLayout.insertLayout(4, layoutButton)
         pieMenuTabLayout.insertLayout(5, layoutShape)
@@ -3365,7 +3400,7 @@ def pieMenuStart():
                 <p style='font-weight:normal;'>This macro adds pie menu to FreeCAD GUI</p>
                 <hr>
                 <h2>Licence</h2>
-                <p style='font-weight:normal;'>Copyright (C) 2024 Grubuntu, Pgilfernandez @ FreeCAD</p>
+                <p style='font-weight:normal;'>Copyright (C) 2024 Grubuntu, Pgilfernandez, Hasecilu @ FreeCAD</p>
                 <p style='font-weight:normal;'>Copyright (C) 2022, 2023 mdkus @ FreeCAD</p>
                 <p style='font-weight:normal;'>Copyright (C) 2016, 2017 triplus @ FreeCAD</p>
                 <p style='font-weight:normal;'>Copyright (C) 2015,2016 looo @ FreeCAD</p>
