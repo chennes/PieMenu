@@ -681,7 +681,7 @@ def pieMenuStart():
             checkboxThroughAll = QCheckBox(translate("Fast Spinbox", "Through all"))
             checkboxThroughAll.setObjectName("styleCheckbox")
             checkboxThroughAll.setCheckable(True)
-            checkboxThroughAll.setProperty("ButtonX", -5)
+            checkboxThroughAll.setProperty("ButtonX", 5)
             checkboxThroughAll.setProperty("ButtonY", -100)
             checkboxThroughAll.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             return checkboxThroughAll
@@ -690,7 +690,7 @@ def pieMenuStart():
             checkboxReversed = QCheckBox(translate("Fast Spinbox", "Reversed"))
             checkboxReversed.setObjectName("styleCheckbox")
             checkboxReversed.setCheckable(True)
-            checkboxReversed.setProperty("ButtonX", -5)
+            checkboxReversed.setProperty("ButtonX", 5)
             checkboxReversed.setProperty("ButtonY", -60)
             checkboxReversed.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             return checkboxReversed
@@ -700,7 +700,7 @@ def pieMenuStart():
             checkboxSymToPlane = QCheckBox(translate("Fast Spinbox", "Symmetric to plane"))
             checkboxSymToPlane.setObjectName("styleCheckbox")
             checkboxSymToPlane.setCheckable(True)
-            checkboxSymToPlane.setProperty("ButtonX", -5)
+            checkboxSymToPlane.setProperty("ButtonX", 5)
             checkboxSymToPlane.setProperty("ButtonY", -80)
             checkboxSymToPlane.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             return checkboxSymToPlane 
@@ -1034,6 +1034,7 @@ def pieMenuStart():
                             self.double_spinbox.setValue(g.Object.Size)
                         elif (str(fonctionActive) == '<PartDesign::Pad>') or (str(fonctionActive) == '<PartDesign::Pocket>') \
                         or (str(fonctionActive) == '<PartDesign::Revolution>') or (str(fonctionActive) == '<PartDesign::Groove>'):
+                            self.double_spinbox.setValue(g.Object.Length)
                             self.double_spinbox.setEnabled(True)
                             
                             layoutReversed = QHBoxLayout()
