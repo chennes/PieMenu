@@ -26,7 +26,7 @@
 # http://www.freecadweb.org/wiki/index.php?title=Code_snippets
 
 # Dev :
-# Add a checkbox for Pocket : "Through all"
+# Add a checkbox for Pocket : Through all, Symmetric, Reversed
 
 global PIE_MENU_VERSION
 PIE_MENU_VERSION = "1.3.Dev"
@@ -608,7 +608,6 @@ def pieMenuStart():
         def __init__(self, parent=mw):
             super().__init__()
             self.double_spinbox = None
-            self.checkbox_pocket = self.checkboxPocket()
 
             if not PieMenu.event_filter_installed:
                 app = QtGui.QGuiApplication.instance() or QtGui.QApplication([])
@@ -653,8 +652,6 @@ def pieMenuStart():
             button.setProperty("ButtonY", 8)
             button.setGeometry(0, 0, buttonSize, buttonSize)
             button.setIconSize(QtCore.QSize(icon, icon))
-            # button.setIcon(QtGui.QIcon(iconValid))
-            # button.setStyleSheet(styleCurrentTheme)
             return button
 
         def cancelButton(self, buttonSize=38):
@@ -665,8 +662,6 @@ def pieMenuStart():
             button.setProperty("ButtonY", 8)
             button.setGeometry(0, 0, buttonSize, buttonSize)
             button.setIconSize(QtCore.QSize(icon, icon))
-            # button.setIcon(QtGui.QIcon(iconCancel))
-            # button.setStyleSheet(styleCurrentTheme)
             return button
 
         def doubleSpinbox(self, buttonSize=32, step=1.0):
@@ -681,16 +676,36 @@ def pieMenuStart():
             button.setStyleSheet(" QWidget { border-radius: 5px; }")
             button.setSingleStep(step)
             return button
+               
+        def checkboxThroughAll(self):
+            checkboxThroughAll = QCheckBox(translate("Fast Spinbox", "Through all"))
+            checkboxThroughAll.setObjectName("styleCheckbox")
+            checkboxThroughAll.setCheckable(True)
+            checkboxThroughAll.setProperty("ButtonX", -5)
+            checkboxThroughAll.setProperty("ButtonY", -100)
+            checkboxThroughAll.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+            return checkboxThroughAll
             
+        def checkboxReversed(self):
+            checkboxReversed = QCheckBox(translate("Fast Spinbox", "Reversed"))
+            checkboxReversed.setObjectName("styleCheckbox")
+            checkboxReversed.setCheckable(True)
+            checkboxReversed.setProperty("ButtonX", -5)
+            checkboxReversed.setProperty("ButtonY", -60)
+            checkboxReversed.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+            return checkboxReversed
+
             
-        def checkboxPocket(self):
-            checkboxPocket = QCheckBox(translate("Fast Spinbox", "Through all"))
-            checkboxPocket.setCheckable(True)
-            checkboxPocket.setProperty("ButtonX", -5)
-            checkboxPocket.setProperty("ButtonY", -60)
-            checkboxPocket.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-            # checkboxPocket.setStyleSheet(" QWidget { border-radius: 5px; }")
-            return checkboxPocket
+        def checkboxSymToPlane(self):
+            checkboxSymToPlane = QCheckBox(translate("Fast Spinbox", "Symmetric to plane"))
+            checkboxSymToPlane.setObjectName("styleCheckbox")
+            checkboxSymToPlane.setCheckable(True)
+            checkboxSymToPlane.setProperty("ButtonX", -5)
+            checkboxSymToPlane.setProperty("ButtonY", -80)
+            checkboxSymToPlane.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+            return checkboxSymToPlane 
+            
+               
 
         def eventFilter(self, obj, event):
             """ Handle key and wheel event """
@@ -860,7 +875,6 @@ def pieMenuStart():
                     button.setIconSize(QtCore.QSize(icon, icon))
                     button.setGeometry(0, 0, buttonSize, buttonSize)
 
-
                     # modify style for display command name (only with Pie shape)
                     if displayCommandName and shape == "Pie":
                         button.setIcon(QtGui.QIcon())
@@ -930,7 +944,6 @@ def pieMenuStart():
                         button.setProperty("ButtonX", X - ((num_per_row - 1) * (buttonSize + icon_spacing)) / 2)
                         button.setProperty("ButtonY", -Y)
 
-
                     elif shape == "LeftRight":
                         ### Table Left and Right  ###
                         num_per_row = math.ceil(commandNumber/2)
@@ -968,16 +981,6 @@ def pieMenuStart():
                 buttonClose.setParent(self.menu)
                 self.buttons.append(buttonClose)
 
-            """ show Valid and Cancel buttons always """
-            # buttonValid = self.validButton()
-            # buttonValid.setParent(self.menu)
-            # buttonValid.clicked.connect(self.validation)
-            # self.buttons.append(buttonValid)
-
-            # buttonCancel = self.cancelButton()
-            # buttonCancel.setParent(self.menu)
-            # buttonCancel.clicked.connect(self.cancel)
-            # self.buttons.append(buttonCancel)
             try:
                 if (Gui.ActiveDocument.getInEdit() != None):
                     """ or show Valid and Cancel buttons in Edit Feature Only """
@@ -997,6 +1000,9 @@ def pieMenuStart():
                     self.offset_y = 0
                     if (module != None and module != 'SketcherGui' and wbName == 'PartDesignWorkbench'):
                         """ Show Spinbox in Edit Feature in Part Design WB only """
+                        
+                        layoutOptions = QtGui.QVBoxLayout()
+                        
                         fonctionActive = g.Object
                         featureName = g.Object.Name
                         double_spinbox = self.doubleSpinbox()
@@ -1005,41 +1011,66 @@ def pieMenuStart():
                         self.buttons.append(double_spinbox)
                         double_spinbox.setVisible(True)
                         self.double_spinbox = double_spinbox
+
+                            
+                        def checkbox_layout(checkbox_func, ObjectAttribute="Type", ObjectType=True, Visibility=True):
+                            checkbox = checkbox_func()
+                            checkbox.setParent(self.menu)
+                            self.buttons.append(checkbox)
+                            checkbox.setGeometry(20,20,110,20)
+                            checkbox.stateChanged.connect(self.spin_interactif)
+                            checkbox.setVisible(Visibility)
+                            if getattr(g.Object, ObjectAttribute) == ObjectType:
+                                checkbox.setChecked(True)
+                            else: 
+                                checkbox.setChecked(False)
+                            self.checkbox = checkbox
+                            return self.checkbox
+
+
                         if (str(fonctionActive) == '<PartDesign::Fillet>'):
                             self.double_spinbox.setValue(g.Object.Radius)
                         elif (str(fonctionActive) == '<PartDesign::Chamfer>'):
                             self.double_spinbox.setValue(g.Object.Size)
-                        elif (str(fonctionActive) == '<PartDesign::Pad>'):
-                            self.double_spinbox.setValue(g.Object.Length)
-                        elif (str(fonctionActive) == '<PartDesign::Pocket>'):
-                            checkbox_pocket = self.checkboxPocket()
-                            checkbox_pocket.setParent(self.menu)
-                            self.buttons.append(checkbox_pocket)
-                            checkbox_pocket.setVisible(False)
-                            checkbox_pocket.stateChanged.connect(self.spin_interactif)
-                        
-                            checkbox_pocket.setVisible(True)
-                            if g.Object.Type == "ThroughAll":
-                                checkbox_pocket.setChecked(True)
-                                self.double_spinbox.setEnabled(False)
-                            else:
-                                checkbox_pocket.setChecked(False)
-                                self.double_spinbox.setEnabled(True)
+                        elif (str(fonctionActive) == '<PartDesign::Pad>') or (str(fonctionActive) == '<PartDesign::Pocket>') \
+                        or (str(fonctionActive) == '<PartDesign::Revolution>') or (str(fonctionActive) == '<PartDesign::Groove>'):
+                            self.double_spinbox.setEnabled(True)
+                            
+                            layoutReversed = QHBoxLayout()
+                            self.checkbox_reversed = checkbox_layout(self.checkboxReversed, "Reversed", True, True)
+                            
+                            layoutReversed.addWidget(self.checkbox_reversed)
+                            layoutOptions.addLayout(layoutReversed)
+                            
+                            layoutMidPlane = QHBoxLayout()
+                            self.checkbox_midPlane = checkbox_layout(self.checkboxSymToPlane, "Midplane", True, True)
+                            
+                            layoutMidPlane.addWidget(self.checkbox_midPlane)
+                            layoutOptions.addLayout(layoutMidPlane)
+                            
+                                
+                            if (str(fonctionActive) == '<PartDesign::Pocket>'):
+                                layoutThroughAll = QHBoxLayout()
+                                self.checkbox_throughAll = checkbox_layout(self.checkboxThroughAll, "Type", "ThroughAll", False)
+
+                                layoutThroughAll.addWidget(self.checkbox_throughAll)
+                                layoutOptions.addLayout(layoutThroughAll)
+                                
+                            if (str(fonctionActive) == '<PartDesign::Pad>') or (str(fonctionActive) == '<PartDesign::Pocket>'):
+                                
                                 self.double_spinbox.setValue(g.Object.Length)
+                            else :
+                                self.double_spinbox.setValue(g.Object.Angle)
+                                self.double_spinbox.setSuffix(" °")
+
                         elif (str(fonctionActive) == '<PartDesign::Thickness>'):
                             self.double_spinbox.setValue(g.Object.Value)
-                        elif (str(fonctionActive) == '<PartDesign::Revolution>'):
-                            self.double_spinbox.setValue(g.Object.Angle)
-                            self.double_spinbox.setSuffix(" °")
-                        elif (str(fonctionActive) == '<PartDesign::Groove>'):
-                            self.double_spinbox.setValue(g.Object.Angle)
-                            self.double_spinbox.setSuffix(" °")
+                        
                         elif (str(fonctionActive) == '<PartDesign::Hole>'): # TODO :  à developper pour gérer la fonction Hole
                             self.buttons.remove(double_spinbox)
                         else:
                             self.buttons.remove(double_spinbox)
-                        checkbox_pocket.setVisible(False)
-                        self.checkbox_pocket = checkbox_pocket
+
                         self.double_spinbox.setFocus()
                         self.double_spinbox.selectAll()
                         self.offset_x = 10
@@ -1151,32 +1182,65 @@ def pieMenuStart():
             featureName = g.Object.Name
             # self.double_spinbox.installEventFilter(self)
             size = self.double_spinbox.value()
+
+            featureThroughAll = 0
+            featureReversed = 0
+            featureSymToPlane = 0
+
             try:
-                pocketType = self.checkbox_pocket.isChecked()
+                featureThroughAll = self.checkbox_throughAll.isChecked()
             except:
-                pocketType = 0
                 None
+     
+            try:
+                featureReversed = self.checkbox_reversed.isChecked()
+            except:
+                None
+                
+            try:
+                featureSymToPlane = self.checkbox_midPlane.isChecked()
+            except:
+                None
+   
             if (str(fonctionActive) == '<PartDesign::Fillet>'):
                 App.getDocument(docName).getObject(featureName).Radius = size
             elif (str(fonctionActive) == '<PartDesign::Chamfer>'):
                 App.getDocument(docName).getObject(featureName).Size = size
-            elif (str(fonctionActive) == '<PartDesign::Pad>'):
-                App.getDocument(docName).getObject(featureName).Length = size
-            elif (str(fonctionActive) == '<PartDesign::Pocket>'):
-                if pocketType:
-                    self.double_spinbox.setEnabled(False)
-                    App.getDocument(docName).getObject(featureName).Type = 1
-                else :
-                    self.double_spinbox.setEnabled(True)
-                    App.getDocument(docName).getObject(featureName).Type = 0
+                
+            elif (str(fonctionActive) == '<PartDesign::Pocket>') or (str(fonctionActive) == '<PartDesign::Pad>')\
+            or (str(fonctionActive) == '<PartDesign::Revolution>') or (str(fonctionActive) == '<PartDesign::Groove>'):
+                
+                # reversed
+                if featureReversed:
+                    App.getDocument(docName).getObject(featureName).Reversed = 1
+                else:
+                    App.getDocument(docName).getObject(featureName).Reversed = 0
+                    
+                # midplane
+                if featureSymToPlane:
+                    App.getDocument(docName).getObject(featureName).Midplane = 1
+                else:
+                    App.getDocument(docName).getObject(featureName).Midplane = 0
+                
+                if (str(fonctionActive) == '<PartDesign::Pocket>'):
+                    # through all
+                    if featureThroughAll:
+                        self.double_spinbox.setEnabled(False)
+                        App.getDocument(docName).getObject(featureName).Type = 1
+                    else :
+                        self.double_spinbox.setEnabled(True)
+                        App.getDocument(docName).getObject(featureName).Type = 0
+                        App.getDocument(docName).getObject(featureName).Length = size
+                        
+                elif (str(fonctionActive) == '<PartDesign::Revolution>') or (str(fonctionActive) == '<PartDesign::Groove>'):
+                    App.getDocument(docName).getObject(featureName).Angle = size
+                else:
                     App.getDocument(docName).getObject(featureName).Length = size
                 
+                    
             elif (str(fonctionActive) == '<PartDesign::Thickness>'):
                 App.getDocument(docName).getObject(featureName).Value = size
-            elif (str(fonctionActive) == '<PartDesign::Revolution>'):
-                App.getDocument(docName).getObject(featureName).Angle = size
-            elif (str(fonctionActive) == '<PartDesign::Groove>'):
-                App.getDocument(docName).getObject(featureName).Angle = size
+                    
             elif (str(fonctionActive) == '<PartDesign::Hole>'):
                 self.double_spinbox.setVisible(False)
             else:
