@@ -26,7 +26,10 @@
 # http://www.freecadweb.org/wiki/index.php?title=Code_snippets
 
 # Dev :
-# Add a checkbox for Pocket : Through all, Symmetric, Reversed
+# Added a checkbox for Pocket : Through all, Symmetric, Reversed
+# Changing spinbox type to accept calculations
+# Added units in spinbox
+#
 
 global PIE_MENU_VERSION
 PIE_MENU_VERSION = "1.3.Dev"
@@ -49,6 +52,7 @@ def pieMenuStart():
     from PySide2.QtGui import QKeySequence
     from PySide2.QtCore import Qt
     from TranslateUtils import translate
+    from FreeCAD import Units
 
     # global variables
 
@@ -663,26 +667,29 @@ def pieMenuStart():
             button.setGeometry(0, 0, buttonSize, buttonSize)
             button.setIconSize(QtCore.QSize(icon, icon))
             return button
-
+            
         def doubleSpinbox(self, buttonSize=32, step=1.0):
-            button = QtGui.QDoubleSpinBox()
-            button.setDecimals(3)
-            button.setFixedWidth(90)
-            button.setMaximum(1000000)
+            """ https://github.com/FreeCAD/FreeCAD/blob/main/src/Gui/QuantitySpinBox.h """
+            ui = FreeCADGui.UiLoader()
+            button = ui.createWidget("Gui::QuantitySpinBox")
+            button.setProperty("minimum", 0.0)
+            button.setFixedWidth(95)
             button.setAlignment(QtCore.Qt.AlignRight)
             button.setProperty("ButtonX", 0)
             button.setProperty("ButtonY", -30)
             button.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             button.setStyleSheet(" QWidget { border-radius: 5px; }")
-            button.setSingleStep(step)
-            return button
+            button.setProperty("setSingleStep" , step)
+            button.valueChanged.connect(self.spin_interactif)
+            return button  
+
                
         def checkboxThroughAll(self):
             checkboxThroughAll = QCheckBox(translate("Fast Spinbox", "Through all"))
             checkboxThroughAll.setObjectName("styleCheckbox")
             checkboxThroughAll.setCheckable(True)
             checkboxThroughAll.setProperty("ButtonX", 5)
-            checkboxThroughAll.setProperty("ButtonY", -100)
+            checkboxThroughAll.setProperty("ButtonY", -95)
             checkboxThroughAll.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             return checkboxThroughAll
             
@@ -691,7 +698,7 @@ def pieMenuStart():
             checkboxReversed.setObjectName("styleCheckbox")
             checkboxReversed.setCheckable(True)
             checkboxReversed.setProperty("ButtonX", 5)
-            checkboxReversed.setProperty("ButtonY", -60)
+            checkboxReversed.setProperty("ButtonY", -55)
             checkboxReversed.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             return checkboxReversed
 
@@ -701,7 +708,7 @@ def pieMenuStart():
             checkboxSymToPlane.setObjectName("styleCheckbox")
             checkboxSymToPlane.setCheckable(True)
             checkboxSymToPlane.setProperty("ButtonX", 5)
-            checkboxSymToPlane.setProperty("ButtonY", -80)
+            checkboxSymToPlane.setProperty("ButtonY", -75)
             checkboxSymToPlane.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             return checkboxSymToPlane 
             
@@ -717,7 +724,6 @@ def pieMenuStart():
                             self.validation()
                     except:
                         None
-
             elif event.type() == QtCore.QEvent.Wheel:
                 """ Press CTRL + rotate Wheel = X10, Press SHIFT + rotate Wheel = X0.1, Press CTRL+SHIFT + rotate Wheel= X0.01 """
                 modifiers = event.modifiers()
@@ -728,7 +734,7 @@ def pieMenuStart():
                 else:
                     step = 1.0
                 try:
-                    self.double_spinbox.setSingleStep(step)
+                    self.double_spinbox.setProperty("singleStep" , step)
                 except:
                     None
             return False
@@ -1011,8 +1017,18 @@ def pieMenuStart():
                         self.buttons.append(double_spinbox)
                         double_spinbox.setVisible(True)
                         self.double_spinbox = double_spinbox
+                 
+                        """ get unit for length according user settings """
+                        unit_schema = Gui.ActiveDocument.Document.UnitSystem
+                        start_index = unit_schema.find('(')
+                        end_index = unit_schema.find(')')
+                        if start_index != -1 and end_index != -1:
+                            values_list = unit_schema[start_index + 1:end_index].split(',')
+                            unit = values_list[0].strip()
+                        else:
+                            unit = ""
 
-                            
+                        
                         def checkbox_layout(checkbox_func, ObjectAttribute="Type", ObjectType=True, Visibility=True):
                             checkbox = checkbox_func()
                             checkbox.setParent(self.menu)
@@ -1029,13 +1045,22 @@ def pieMenuStart():
 
 
                         if (str(fonctionActive) == '<PartDesign::Fillet>'):
-                            self.double_spinbox.setValue(g.Object.Radius)
+                            quantity = Units.Quantity("{} {}".format(float(float(g.Object.Radius)), unit))
+                            self.double_spinbox.setProperty('value', quantity)
                         elif (str(fonctionActive) == '<PartDesign::Chamfer>'):
-                            self.double_spinbox.setValue(g.Object.Size)
+                            quantity = Units.Quantity("{} {}".format(float(g.Object.Size) , unit))
+                            self.double_spinbox.setProperty('value', quantity)
                         elif (str(fonctionActive) == '<PartDesign::Pad>') or (str(fonctionActive) == '<PartDesign::Pocket>') \
-                        or (str(fonctionActive) == '<PartDesign::Revolution>') or (str(fonctionActive) == '<PartDesign::Groove>'):
-                            self.double_spinbox.setValue(g.Object.Length)
+                        or (str(fonctionActive) == '<PartDesign::Revolution>') or (str(fonctionActive) == '<PartDesign::Groove>'):                        
                             self.double_spinbox.setEnabled(True)
+                            
+                            try:
+                                quantity = Units.Quantity("{} {}".format(float(g.Object.Length) , unit))
+                                self.double_spinbox.setProperty('value', quantity)
+                            except:
+                                unit = " °" # degres
+                                quantity = Units.Quantity("{} {}".format(float(g.Object.Angle) , unit))
+                                self.double_spinbox.setProperty('value', quantity)
                             
                             layoutReversed = QHBoxLayout()
                             self.checkbox_reversed = checkbox_layout(self.checkboxReversed, "Reversed", True, True)
@@ -1058,14 +1083,16 @@ def pieMenuStart():
                                 layoutOptions.addLayout(layoutThroughAll)
                                 
                             if (str(fonctionActive) == '<PartDesign::Pad>') or (str(fonctionActive) == '<PartDesign::Pocket>'):
-                                
-                                self.double_spinbox.setValue(g.Object.Length)
+                                quantity = Units.Quantity("{} {}".format(float(g.Object.Length) , unit))
+                                self.double_spinbox.setProperty('value', quantity)
                             else :
-                                self.double_spinbox.setValue(g.Object.Angle)
-                                self.double_spinbox.setSuffix(" °")
+                                unit = " °" # degres
+                                quantity = Units.Quantity("{} {}".format(float(g.Object.Angle) , unit))
+                                self.double_spinbox.setProperty('value', quantity)
 
                         elif (str(fonctionActive) == '<PartDesign::Thickness>'):
-                            self.double_spinbox.setValue(g.Object.Value)
+                            quantity = Units.Quantity("{} {}".format(float(g.Object.Value) , unit))
+                            self.double_spinbox.setProperty('value', quantity)
                         
                         elif (str(fonctionActive) == '<PartDesign::Hole>'): # TODO :  à developper pour gérer la fonction Hole
                             self.buttons.remove(double_spinbox)
@@ -1175,14 +1202,13 @@ def pieMenuStart():
                     self.menu.popup(QtCore.QPoint(pos.x() - self.menuSize / 2, pos.y()
                         - self.menuSize / 2))
 
-
         def spin_interactif(self):
             docName = App.ActiveDocument.Name
             g = Gui.ActiveDocument.getInEdit()
             fonctionActive = g.Object
             featureName = g.Object.Name
             # self.double_spinbox.installEventFilter(self)
-            size = self.double_spinbox.value()
+            size = self.double_spinbox.property('value')
 
             featureThroughAll = 0
             featureReversed = 0
@@ -1248,6 +1274,7 @@ def pieMenuStart():
                 self.double_spinbox.setVisible(False)
             # self.double_spinbox.removeEventFilter(self)
             App.ActiveDocument.recompute()
+
 
     sign = {
         "<": operator.lt,
