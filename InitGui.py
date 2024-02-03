@@ -29,6 +29,8 @@
 # Added a checkbox for Pocket : Through all, Symmetric, Reversed
 # Changing spinbox type to accept calculations
 # Added units in spinbox
+# Fix some weird behavior with context
+# Reactivation of the quickmenu in the sketcher, the problem seems resolved
 #
 
 global PIE_MENU_VERSION
@@ -773,6 +775,7 @@ def pieMenuStart():
                 group = getGroup(mode=2)
             else:
                 group = getGroup(mode=1)
+                
             if len(commands) == 0:
                 commandNumber = 1
             else:
@@ -789,7 +792,7 @@ def pieMenuStart():
             num_per_row = getNumColumn(keyValue)
             icon_spacing = getIconSpacing(keyValue)
 
-            if paramGet.GetBool("ToolBar"):
+            if paramGet.GetBool("ToolBar") and keyValue == None:
                 valueRadius = 100
                 valueButton = 32
                 shape = "Pie"
@@ -976,9 +979,9 @@ def pieMenuStart():
 
             buttonQuickMenu = quickMenu()
             if checkboxQuickMenu.checkState():
-                if (module != 'SketcherGui'): # TO SOLVE : we hide setting menu in sketcher to prevent user to go in the preferences dialog : there is a bug with settings
-                    buttonQuickMenu.setParent(self.menu)
-                    self.buttons.append(buttonQuickMenu)
+                # if (module != 'SketcherGui'): # TO SOLVE : we hide setting menu in sketcher to prevent user to go in the preferences dialog : there is a bug with settings
+                buttonQuickMenu.setParent(self.menu)
+                self.buttons.append(buttonQuickMenu)
             else:
                 buttonQuickMenu.hide()
 
@@ -1125,7 +1128,7 @@ def pieMenuStart():
 
             enableContext = paramGet.GetBool("EnableContext")
 
-            if contextPhase:
+            if contextPhase and keyValue==None:
                 sel = Gui.Selection.getSelectionEx()
                 if not sel:
                     self.hide()
@@ -1135,7 +1138,7 @@ def pieMenuStart():
                     self.hide()
                     updateCommands()
                 else:
-                    updateCommands(context=True)
+                    updateCommands(keyValue, context=True)
             else:
                 updateCommands(keyValue)
 
@@ -1388,9 +1391,9 @@ def pieMenuStart():
                 paramGet.SetString("ContextPie", pieName)
             contextPhase = True
 
-            updateCommands(context=True)
+            # updateCommands(keyValue=None, context=True)
             PieMenuInstance.hide()
-            selectionTriggered = True
+            # selectionTriggered = True
             #PieMenuInstance.showAtMouse(notKeyTriggered=True)
         else:
             pass
@@ -1505,68 +1508,86 @@ def pieMenuStart():
         return False
 
 
+
     def updateCommands(keyValue=None, context=False):
         indexList = getIndexList()
+        # keyValue = None > Global shortcut
+        # keyValue != None > Custom shortcut
 
-        if paramGet.GetBool("ToolBar") and context is False:
-            toolbar = paramGet.GetString("ToolBar")
-            text = keyValue
-            if ": " in toolbar:
-                toolbar_desc = toolbar.split(": ")
-                toolbar = toolbar_desc[1]
-                workbenches = toolbar_desc[0]
-                workbenches = workbenches.split(", ")
-                lastWorkbench = Gui.activeWorkbench()
-                for i in workbenches:
-                    # rule out special cases
-                    if i == None or i == "Std":
-                        # wb = Gui.activeWorkbench()
-                        # workbenches = wb.name()
-                        pass
-                    else:
-                        # match special cases
-                        # Fem workbench
-                        if i == "FEM":
-                            i = "Fem"
-                        # Sheet Metal workbench
-                        if i[:2] == "SM":
-                            i = i[:2]
-                        # Assembly4 workbench
-                        if i == "Asm4":
-                            i = "Assembly4"
-                    if (i + "Workbench") not in loadedWorkbenches:
-                        try:
-                            Gui.activateWorkbench(i + "Workbench")
-                        except:
-                            None
-                        loadedWorkbenches.append(i + "Workbench")
-                Gui.activateWorkbench(lastWorkbench.__class__.__name__)
-
-            else:
-                pass
-            actions = []
-            getGuiToolButtonData(toolbar, actions, None, None)
-
-        else:
-            if keyValue == None:
+        if keyValue == None:
+            # context
+            if context:
+                try:
+                    text = paramGet.GetString("ContextPie").decode("UTF-8")
+                except AttributeError:
+                    text = paramGet.GetString("ContextPie")
+        
+            # workbench
+            elif not paramGet.GetBool("ToolBar"):
                 wb = Gui.activeWorkbench()
                 wbName = wb.name()
                 wbName = wbName.replace("Workbench", "")
+                # workbench
                 text =  getPieName(wbName)
-    
-                if context:
-                    try:
-                        text = paramGet.GetString("ContextPie").decode("UTF-8")
-                    except AttributeError:
-                        text = paramGet.GetString("ContextPie")
+                
+                # current Pie
                 if text == None:
                     try:
                         text = paramGet.GetString("CurrentPie").decode("UTF-8")
                     except AttributeError:
                         text = paramGet.GetString("CurrentPie")
-            else:
-                text = keyValue
+            # else:
+                # text = keyValue
+                context = False
+                
+             # toolbar
+            elif paramGet.GetBool("ToolBar"):
+                toolbar = paramGet.GetString("ToolBar")
+                text = None
+                context = False
+                if ": " in toolbar:
+                    toolbar_desc = toolbar.split(": ")
+                    toolbar = toolbar_desc[1]
+                    workbenches = toolbar_desc[0]
+                    workbenches = workbenches.split(", ")
+                    lastWorkbench = Gui.activeWorkbench()
+                    for i in workbenches:
+                        # rule out special cases
+                        if i == None or i == "Std":
+                            # wb = Gui.activeWorkbench()
+                            # workbenches = wb.name()
+                            pass
+                        else:
+                            # match special cases
+                            # Fem workbench
+                            if i == "FEM":
+                                i = "Fem"
+                            # Sheet Metal workbench
+                            if i[:2] == "SM":
+                                i = i[:2]
+                            # Assembly4 workbench
+                            if i == "Asm4":
+                                i = "Assembly4"
+                        if (i + "Workbench") not in loadedWorkbenches:
+                            try:
+                                Gui.activateWorkbench(i + "Workbench")
+                            except:
+                                None
+                            loadedWorkbenches.append(i + "Workbench")
+                    Gui.activateWorkbench(lastWorkbench.__class__.__name__)
 
+                else:
+                    pass
+                context = False    
+                actions = []
+                getGuiToolButtonData(toolbar, actions, None, None)
+        
+        else:
+            # custom shortcut
+            text = keyValue
+            context = False
+
+        if text:
             toolList = None
 
             for i in indexList:
@@ -1595,6 +1616,10 @@ def pieMenuStart():
             else:
                 pass
             Gui.activateWorkbench(lastWorkbench.__class__.__name__)
+        
+        else:
+            pass
+ 
 
         PieMenuInstance.add_commands(actions, context, text)
 
